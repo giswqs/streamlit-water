@@ -5,7 +5,7 @@ st.set_page_config(layout="wide")
 
 # Customize the sidebar
 markdown = """
-Web App URL: <https://water.streamlitapp.com>
+Web App URL: <https://waters.streamlitapp.com>
 
 GitHub Repository: <https://github.com/giswqs/streamlit-water>
 
@@ -38,6 +38,8 @@ with col2:
 
 with col1:
 
-    m = leafmap.Map(locate_control=True, latlon_control=True, draw_export=True, minimap_control=True)
+    m = leafmap.Map(
+        locate_control=True, latlon_control=True, draw_export=True, minimap_control=True
+    )
     m.add_basemap(basemap)
     m.to_streamlit(height=700)

@@ -5,7 +5,7 @@ st.set_page_config(layout="wide")
 
 # Customize the sidebar
 markdown = """
-Web App URL: <https://water.streamlitapp.com>
+Web App URL: <https://waters.streamlitapp.com>
 
 GitHub Repository: <https://github.com/giswqs/streamlit-water>
 
