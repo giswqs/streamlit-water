@@ -1,15 +1,28 @@
 import streamlit as st
 import leafmap.foliumap as leafmap
 
+st.set_page_config(layout="wide")
+
+# Customize the sidebar
 markdown = """
-Web App URL: <https://template.streamlitapp.com>
-GitHub Repository: <https://github.com/giswqs/streamlit-multipage-template>
+Web App URL: <https://water.streamlitapp.com>
+
+GitHub Repository: <https://github.com/giswqs/streamlit-water>
+
+More Apps: <https://geospatial.streamlitapp.com>
+
 """
 
 st.sidebar.title("About")
 st.sidebar.info(markdown)
-logo = "https://i.imgur.com/UbOXYAU.png"
-st.sidebar.image(logo)
+
+st.sidebar.title("Contact")
+st.sidebar.info(
+    """
+    Qiusheng Wu: <https://wetlands.io>
+    [GitHub](https://github.com/giswqs) | [Twitter](https://twitter.com/giswqs) | [YouTube](https://www.youtube.com/c/QiushengWu) | [LinkedIn](https://www.linkedin.com/in/qiushengwu)
+    """
+)
 
 
 st.title("Interactive Map")
