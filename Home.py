@@ -25,7 +25,7 @@ st.sidebar.info(
 )
 
 # Customize page title
-st.title("Mapping Global Surface Water")
+st.title("Global Surface Water Explorer")
 
 st.markdown(
     """
