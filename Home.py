@@ -29,7 +29,7 @@ st.title("Global Surface Water Explorer")
 
 st.markdown(
     """
-    This interactive web app demonstrates how to visualize and compare global surface water datasets. Click the on side bar menu to explore the different datasets.
+    This interactive web app demonstrates how to visualize, compare, and analyze global surface water datasets. Click the on side bar menu to explore the different datasets.
     """
 )
 

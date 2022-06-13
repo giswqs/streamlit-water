@@ -65,25 +65,27 @@ with st.expander("How to use this app"):
 
 col1, col2 = st.columns([4, 1])
 
-Map = geemap.Map(Draw_export=False, locate_control=True, plugin_LatLngPopup=True)
+Map = geemap.Map(Draw_export=True, locate_control=True, plugin_LatLngPopup=True)
 
 roi = ee.FeatureCollection("users/giswqs/public/countries")
 countries = roi.aggregate_array("name").getInfo()
 countries.sort()
 # countries = ["United States of America"]
 
-lc_basemaps = [
-    "ESA Global Land Cover 2020",
-    "ESRI Global Land Cover 2020",
-    "JRC Global Surface Water",
-    "USDA NASS Cropland 2020",
-    "US NLCD 2019",
-]
+# lc_basemaps = [
+#     "ESA Global Land Cover 2020",
+#     "ESRI Global Land Cover 2020",
+#     "JRC Global Surface Water",
+#     "USDA NASS Cropland 2020",
+#     "US NLCD 2019",
+# ]
 
-google_basemaps = ["OpenStreetMap"] + [
-    "Google " + b for b in list(geemap.basemaps.keys())[1:5]
-]
-basemaps = google_basemaps + lc_basemaps
+# google_basemaps = ["OpenStreetMap"] + [
+#     "Google " + b for b in list(geemap.basemaps.keys())[1:5]
+# ]
+# basemaps = google_basemaps + lc_basemaps
+basemaps = list(geemap.basemaps.keys())
+
 with col2:
 
     latitude = st.number_input("Map center latitude", -90.0, 90.0, 40.0, step=0.5)
@@ -116,86 +118,88 @@ with col2:
     basemap = st.selectbox(
         "Select a basemap",
         basemaps,
-        index=basemaps.index("Google HYBRID"),
+        index=basemaps.index("HYBRID"),
     )
-    if basemap in google_basemaps:
-        Map.add_basemap(basemap.replace("Google ", ""))
-    elif basemap in lc_basemaps:
+    Map.add_basemap(basemap)
 
-        if basemap == "ESA Global Land Cover 2020":
-            dataset = ee.ImageCollection("ESA/WorldCover/v100").first()
-            if st.session_state["ROI"] is not None:
-                dataset = dataset.clipToCollection(st.session_state["ROI"])
+    # if basemap in google_basemaps:
+    #     Map.add_basemap(basemap.replace("Google ", ""))
+    # elif basemap in lc_basemaps:
 
-            Map.addLayer(dataset, {}, "ESA Landcover")
-            Map.add_legend(title="ESA Landcover", builtin_legend="ESA_WorldCover")
-        elif basemap == "ESRI Global Land Cover 2020":
+    #     if basemap == "ESA Global Land Cover 2020":
+    #         dataset = ee.ImageCollection("ESA/WorldCover/v100").first()
+    #         if st.session_state["ROI"] is not None:
+    #             dataset = dataset.clipToCollection(st.session_state["ROI"])
 
-            esri_lulc10 = ee.ImageCollection(
-                "projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m"
-            )
-            legend_dict = {
-                "names": [
-                    "Water",
-                    "Trees",
-                    "Grass",
-                    "Flooded Vegetation",
-                    "Crops",
-                    "Scrub/Shrub",
-                    "Built Area",
-                    "Bare Ground",
-                    "Snow/Ice",
-                    "Clouds",
-                ],
-                "colors": [
-                    "#1A5BAB",
-                    "#358221",
-                    "#A7D282",
-                    "#87D19E",
-                    "#FFDB5C",
-                    "#EECFA8",
-                    "#ED022A",
-                    "#EDE9E4",
-                    "#F2FAFF",
-                    "#C8C8C8",
-                ],
-            }
+    #         Map.addLayer(dataset, {}, "ESA Landcover")
+    #         Map.add_legend(title="ESA Landcover", builtin_legend="ESA_WorldCover")
+    #     elif basemap == "ESRI Global Land Cover 2020":
 
-            vis_params = {"min": 1, "max": 10, "palette": legend_dict["colors"]}
-            esri_lulc10 = esri_lulc10.mosaic()
+    #         esri_lulc10 = ee.ImageCollection(
+    #             "projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m"
+    #         )
+    #         legend_dict = {
+    #             "names": [
+    #                 "Water",
+    #                 "Trees",
+    #                 "Grass",
+    #                 "Flooded Vegetation",
+    #                 "Crops",
+    #                 "Scrub/Shrub",
+    #                 "Built Area",
+    #                 "Bare Ground",
+    #                 "Snow/Ice",
+    #                 "Clouds",
+    #             ],
+    #             "colors": [
+    #                 "#1A5BAB",
+    #                 "#358221",
+    #                 "#A7D282",
+    #                 "#87D19E",
+    #                 "#FFDB5C",
+    #                 "#EECFA8",
+    #                 "#ED022A",
+    #                 "#EDE9E4",
+    #                 "#F2FAFF",
+    #                 "#C8C8C8",
+    #             ],
+    #         }
 
-            if st.session_state["ROI"] is not None:
-                esri_lulc10 = esri_lulc10.clipToCollection(st.session_state["ROI"])
-            Map.addLayer(esri_lulc10, vis_params, "ESRI Global Land Cover")
-            Map.add_legend(title="ESRI Landcover", builtin_legend="ESRI_LandCover")
+    #         vis_params = {"min": 1, "max": 10, "palette": legend_dict["colors"]}
+    #         esri_lulc10 = esri_lulc10.mosaic()
 
-        elif basemap == "US NLCD 2019":
-            nlcd = ee.Image("USGS/NLCD_RELEASES/2019_REL/NLCD/2019").select("landcover")
-            if st.session_state["ROI"] is not None:
-                nlcd = nlcd.clipToCollection(st.session_state["ROI"])
-            Map.addLayer(nlcd, {}, "US NLCD 2019")
-            Map.add_legend(title="NLCD Land Cover", builtin_legend="NLCD")
+    #         if st.session_state["ROI"] is not None:
+    #             esri_lulc10 = esri_lulc10.clipToCollection(st.session_state["ROI"])
+    #         Map.addLayer(esri_lulc10, vis_params, "ESRI Global Land Cover")
+    #         Map.add_legend(title="ESRI Landcover", builtin_legend="ESRI_LandCover")
 
-        elif basemap == "USDA NASS Cropland 2020":
-            cropland = (
-                ee.ImageCollection("USDA/NASS/CDL")
-                .filterDate("2010-01-01", "2020-01-01")
-                .first()
-                .select("cropland")
-            )
+    #     elif basemap == "US NLCD 2019":
+    #         nlcd = ee.Image("USGS/NLCD_RELEASES/2019_REL/NLCD/2019").select("landcover")
+    #         if st.session_state["ROI"] is not None:
+    #             nlcd = nlcd.clipToCollection(st.session_state["ROI"])
+    #         Map.addLayer(nlcd, {}, "US NLCD 2019")
+    #         Map.add_legend(title="NLCD Land Cover", builtin_legend="NLCD")
 
-            if st.session_state["ROI"] is not None:
-                cropland = cropland.clipToCollection(st.session_state["ROI"])
+    #     elif basemap == "USDA NASS Cropland 2020":
+    #         cropland = (
+    #             ee.ImageCollection("USDA/NASS/CDL")
+    #             .filterDate("2010-01-01", "2020-01-01")
+    #             .first()
+    #             .select("cropland")
+    #         )
 
-            Map.addLayer(cropland, {}, "USDA NASS Cropland 2020")
+    #         if st.session_state["ROI"] is not None:
+    #             cropland = cropland.clipToCollection(st.session_state["ROI"])
 
-        # elif "HydroSHEDS" in datasets:
-        #     hydrolakes = ee.FeatureCollection(
-        #         "projects/sat-io/open-datasets/HydroLakes/lake_poly_v10"
-        #     )
-        #     if st.session_state["ROI"] is not None:
-        #         hydrolakes = hydrolakes.filterBounds(st.session_state["ROI"])
-        #     Map.addLayer(hydrolakes, {"color": "#00008B"}, "HydroSHEDS - HydroLAKES")
+    #         Map.addLayer(cropland, {}, "USDA NASS Cropland 2020")
+
+    # elif "HydroSHEDS" in datasets:
+    #     hydrolakes = ee.FeatureCollection(
+    #         "projects/sat-io/open-datasets/HydroLakes/lake_poly_v10"
+    #     )
+    #     if st.session_state["ROI"] is not None:
+    #         hydrolakes = hydrolakes.filterBounds(st.session_state["ROI"])
+    #     Map.addLayer(hydrolakes, {"color": "#00008B"}, "HydroSHEDS - HydroLAKES")
 
 # roi = ee.FeatureCollection("users/giswqs/MRB/NWI_HU8_Boundary_Simplify")
 style = {
