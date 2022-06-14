@@ -75,11 +75,11 @@ basemaps = list(geemap.basemaps.keys())
 with col2:
 
     with st.expander("Set map center and zoom level"):
-        latitude = st.number_input("Map center latitude", -90.0, 90.0, 40.0, step=0.5)
+        latitude = st.number_input("Map center latitude", -90.0, 90.0, 20.0, step=0.5)
         longitude = st.number_input(
-            "Map center longitude", -180.0, 180.0, -100.0, step=0.5
+            "Map center longitude", -180.0, 180.0, 0.0, step=0.5
         )
-        zoom = st.slider("Map zoom level", 1, 22, 4)
+        zoom = st.slider("Map zoom level", 1, 22, 2)
 
     select = st.checkbox("Select a country")
     if select:
@@ -114,7 +114,7 @@ with col2:
     datasets = [
         "JRC Max Water Extent (1984-2020)",
         "JRC Water Occurrence (1984-2020)",
-        "Dynamic World (2015-2022)",
+        "Dynamic World 2020",
         "ESA Global Land Cover 2020",
         "ESRI Global Land Cover 2020",
         "OpenStreetMap Water Layer",
@@ -127,15 +127,16 @@ with col2:
 
     with st.expander("Set visualization parameters"):
         params_input = st.empty()
-        opacity = st.slider("Set layer opacity", 0.0, 1.0, 0.8)
+        opacity = st.slider("Set layer opacity", 0.0, 1.0, 1.0)
 
     water_only = st.checkbox("Show water class only")
     split = st.checkbox("Use split-panel map")
+    add_legend = st.checkbox("Add legend", True)
 
     if dataset == "JRC Max Water Extent (1984-2020)":
         params = params_input.text_area(
             "Enter vis params as a dictionary",
-            "{'min': 1, 'max': 1, 'palette': ['blue']}",
+            "{'min': 1, 'max': 1, 'palette': ['0000ff']}",
         )
 
         try:
@@ -157,6 +158,10 @@ with col2:
             Map.split_map(layer, layer)
         else:
             Map.add_layer(image, vis_params, dataset, True, opacity)
+
+        if add_legend:
+            legend_dict = {"Water": vis_params["palette"][0]}
+            Map.add_legend(title="Legend", legend_dict=legend_dict)
 
     elif dataset == "JRC Water Occurrence (1984-2020)":
         params = params_input.text_area(
@@ -184,7 +189,58 @@ with col2:
 
         Map.add_colorbar(vis_params, label="Water occurrence (%)")
 
-        # Map.addLayer(image, vis_params, dataset, True, opacity)
+    elif dataset == "Dynamic World 2020":
+        start_date = "2020-01-01"
+        end_date = "2021-01-01"
+
+        if st.session_state["ROI"] is not None:
+            region = st.session_state["ROI"]
+        else:
+            region = ee.Geometry.BBox(-179, -89, 179, 89)
+
+        if water_only:
+            image = geemap.dynamic_world(
+                region, start_date, end_date, return_type="class"
+            )
+
+            image = image.eq(0).selfMask()
+
+            params = params_input.text_area(
+                "Enter vis params as a dictionary",
+                "{'min': 1, 'max': 1, 'palette': ['419BDF']}",
+            )
+
+            try:
+                vis_params = eval(params)
+            except Exception as e:
+                st.error(e)
+                st.error("Invalid vis params")
+                vis_params = {}
+
+        else:
+            image = geemap.dynamic_world(
+                region, start_date, end_date, return_type="hillshade"
+            )
+            vis_params = {}
+
+        if st.session_state["ROI"] is not None:
+            image = image.clip(st.session_state["ROI"])
+
+        if split:
+            layer = geemap.ee_tile_layer(image, vis_params, dataset, True, opacity)
+            Map.split_map(layer, layer)
+        else:
+            Map.add_layer(image, vis_params, dataset, True, opacity)
+
+        if add_legend:
+
+            if water_only:
+                legend_dict = {"Water": vis_params["palette"][0]}
+                Map.add_legend(title="Legend", legend_dict=legend_dict)
+            else:
+                Map.add_legend(
+                    title="Dynamic World Land Cover", builtin_legend="Dynamic_World"
+                )
 
     # if basemap in google_basemaps:
     #     Map.add_basemap(basemap.replace("Google ", ""))
