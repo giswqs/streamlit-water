@@ -70,27 +70,16 @@ Map = geemap.Map(Draw_export=True, locate_control=True, plugin_LatLngPopup=True)
 roi = ee.FeatureCollection("users/giswqs/public/countries")
 countries = roi.aggregate_array("name").getInfo()
 countries.sort()
-# countries = ["United States of America"]
-
-# lc_basemaps = [
-#     "ESA Global Land Cover 2020",
-#     "ESRI Global Land Cover 2020",
-#     "JRC Global Surface Water",
-#     "USDA NASS Cropland 2020",
-#     "US NLCD 2019",
-# ]
-
-# google_basemaps = ["OpenStreetMap"] + [
-#     "Google " + b for b in list(geemap.basemaps.keys())[1:5]
-# ]
-# basemaps = google_basemaps + lc_basemaps
 basemaps = list(geemap.basemaps.keys())
 
 with col2:
 
-    latitude = st.number_input("Map center latitude", -90.0, 90.0, 40.0, step=0.5)
-    longitude = st.number_input("Map center longitude", -180.0, 180.0, -100.0, step=0.5)
-    zoom = st.slider("Map zoom level", 1, 22, 4)
+    with st.expander("Set map center and zoom level"):
+        latitude = st.number_input("Map center latitude", -90.0, 90.0, 40.0, step=0.5)
+        longitude = st.number_input(
+            "Map center longitude", -180.0, 180.0, -100.0, step=0.5
+        )
+        zoom = st.slider("Map zoom level", 1, 22, 4)
 
     select = st.checkbox("Select a country")
     if select:
@@ -121,6 +110,81 @@ with col2:
         index=basemaps.index("HYBRID"),
     )
     Map.add_basemap(basemap)
+
+    datasets = [
+        "JRC Max Water Extent (1984-2020)",
+        "JRC Water Occurrence (1984-2020)",
+        "Dynamic World (2015-2022)",
+        "ESA Global Land Cover 2020",
+        "ESRI Global Land Cover 2020",
+        "OpenStreetMap Water Layer",
+        "Global River Width (GRWL)",
+        "Global floodplains (GFPLAIN250m)",
+        "HydroLAKES",
+    ]
+
+    dataset = st.selectbox("Select a water dataset", datasets)
+
+    with st.expander("Set visualization parameters"):
+        params_input = st.empty()
+        opacity = st.slider("Set layer opacity", 0.0, 1.0, 0.8)
+
+    water_only = st.checkbox("Show water class only")
+    split = st.checkbox("Use split-panel map")
+
+    if dataset == "JRC Max Water Extent (1984-2020)":
+        params = params_input.text_area(
+            "Enter vis params as a dictionary",
+            "{'min': 1, 'max': 1, 'palette': ['blue']}",
+        )
+
+        try:
+            vis_params = eval(params)
+        except Exception as e:
+            st.error(e)
+            st.error("Invalid vis params")
+            vis_params = {}
+
+        image = (
+            ee.Image("JRC/GSW1_3/GlobalSurfaceWater").select("max_extent").selfMask()
+        )
+
+        if st.session_state["ROI"] is not None:
+            image = image.clip(st.session_state["ROI"])
+
+        if split:
+            layer = geemap.ee_tile_layer(image, vis_params, dataset, True, opacity)
+            Map.split_map(layer, layer)
+        else:
+            Map.add_layer(image, vis_params, dataset, True, opacity)
+
+    elif dataset == "JRC Water Occurrence (1984-2020)":
+        params = params_input.text_area(
+            "Enter vis params as a dictionary",
+            "{'min': 0, 'max': 100, 'palette': ['ffffff', 'ffbbbb', '0000ff']}",
+        )
+
+        try:
+            vis_params = eval(params)
+        except Exception as e:
+            st.error(e)
+            st.error("Invalid vis params")
+            vis_params = {}
+
+        image = ee.Image("JRC/GSW1_3/GlobalSurfaceWater").select("occurrence")
+
+        if st.session_state["ROI"] is not None:
+            image = image.clip(st.session_state["ROI"])
+
+        if split:
+            layer = geemap.ee_tile_layer(image, vis_params, dataset, True, opacity)
+            Map.split_map(layer, layer)
+        else:
+            Map.add_layer(image, vis_params, dataset, True, opacity)
+
+        Map.add_colorbar(vis_params, label="Water occurrence (%)")
+
+        # Map.addLayer(image, vis_params, dataset, True, opacity)
 
     # if basemap in google_basemaps:
     #     Map.add_basemap(basemap.replace("Google ", ""))
@@ -210,19 +274,19 @@ style = {
 }
 
 # select_holder = col2.empty()
-with col2:
-    datasets = st.multiselect(
-        "Select surface water datasets",
-        [
-            "ESA Land Use",
-            "JRC Max Water Extent",
-            "OpenStreetMap",
-            "HydroLakes",
-            "LAGOS",
-            "US NED Depressions",
-            "Global River Width",
-        ],
-    )
+# with col2:
+#     datasets = st.multiselect(
+#         "Select surface water datasets",
+#         [
+#             "ESA Land Use",
+#             "JRC Max Water Extent",
+#             "OpenStreetMap",
+#             "HydroLakes",
+#             "LAGOS",
+#             "US NED Depressions",
+#             "Global River Width",
+#         ],
+#     )
 
 # styles = {
 #     "ESA Land Use": {
@@ -257,84 +321,84 @@ with col2:
 #     },
 # }
 
-width = 1
-styles = {
-    "ESA Land Use": {
-        "color": "000000ff",
-        "width": width,
-        "fillColor": "dca0dcff",
-    },
-    "JRC Max Water Extent": {
-        "color": "000000ff",
-        "width": width,
-        "fillColor": "ffc2cbff",
-    },
-    "OpenStreetMap": {
-        "color": "000000ff",
-        "width": width,
-        "fillColor": "bf03bfff",
-    },
-    "HydroLakes": {
-        "color": "000000ff",
-        "width": width,
-        "fillColor": "4e0583ff",
-    },
-    "LAGOS": {
-        "color": "000000ff",
-        "width": width,
-        "fillColor": "8f228fff",
-    },
-    "US NED Depressions": {
-        "color": "000000ff",
-        "width": width,
-        "fillColor": "8d32e2ff",
-    },
-    "Global River Width": {
-        "color": "000000ff",
-        "width": width,
-        "fillColor": "0000ffff",
-    },
-}
+# width = 1
+# styles = {
+#     "ESA Land Use": {
+#         "color": "000000ff",
+#         "width": width,
+#         "fillColor": "dca0dcff",
+#     },
+#     "JRC Max Water Extent": {
+#         "color": "000000ff",
+#         "width": width,
+#         "fillColor": "ffc2cbff",
+#     },
+#     "OpenStreetMap": {
+#         "color": "000000ff",
+#         "width": width,
+#         "fillColor": "bf03bfff",
+#     },
+#     "HydroLakes": {
+#         "color": "000000ff",
+#         "width": width,
+#         "fillColor": "4e0583ff",
+#     },
+#     "LAGOS": {
+#         "color": "000000ff",
+#         "width": width,
+#         "fillColor": "8f228fff",
+#     },
+#     "US NED Depressions": {
+#         "color": "000000ff",
+#         "width": width,
+#         "fillColor": "8d32e2ff",
+#     },
+#     "Global River Width": {
+#         "color": "000000ff",
+#         "width": width,
+#         "fillColor": "0000ffff",
+#     },
+# }
 
-if "ESA Land Use" in datasets:
-    dataset = ee.FeatureCollection("users/giswqs/MRB/ESA_entireUS")
-    Map.addLayer(dataset.style(**styles["ESA Land Use"]), {}, "ESA Land Use")
+# if "ESA Land Use" in datasets:
+#     dataset = ee.FeatureCollection("users/giswqs/MRB/ESA_entireUS")
+#     Map.addLayer(dataset.style(**styles["ESA Land Use"]), {}, "ESA Land Use")
 
-if "JRC Max Water Extent" in datasets:
-    dataset = ee.FeatureCollection("users/giswqs/MRB/JRC_entireUS")
-    Map.addLayer(
-        dataset.style(**styles["JRC Max Water Extent"]), {}, "JRC Max Water Extent"
-    )
+# if "JRC Max Water Extent" in datasets:
+#     dataset = ee.FeatureCollection("users/giswqs/MRB/JRC_entireUS")
+#     Map.addLayer(
+#         dataset.style(**styles["JRC Max Water Extent"]), {}, "JRC Max Water Extent"
+#     )
 
-if "OpenStreetMap" in datasets:
-    dataset = ee.FeatureCollection("users/giswqs/MRB/OSM_entireUS")
-    Map.addLayer(dataset.style(**styles["OpenStreetMap"]), {}, "OpenStreetMap")
+# if "OpenStreetMap" in datasets:
+#     dataset = ee.FeatureCollection("users/giswqs/MRB/OSM_entireUS")
+#     Map.addLayer(dataset.style(**styles["OpenStreetMap"]), {}, "OpenStreetMap")
 
-if "HydroLakes" in datasets:
-    dataset = ee.FeatureCollection("users/giswqs/MRB/HL_entireUS")
-    Map.addLayer(dataset.style(**styles["HydroLakes"]), {}, "HydroLakes")
+# if "HydroLakes" in datasets:
+#     dataset = ee.FeatureCollection("users/giswqs/MRB/HL_entireUS")
+#     Map.addLayer(dataset.style(**styles["HydroLakes"]), {}, "HydroLakes")
 
-if "LAGOS" in datasets:
-    dataset = ee.FeatureCollection("users/giswqs/MRB/LAGOS_entireUS")
-    Map.addLayer(dataset.style(**styles["LAGOS"]), {}, "LAGOS")
+# if "LAGOS" in datasets:
+#     dataset = ee.FeatureCollection("users/giswqs/MRB/LAGOS_entireUS")
+#     Map.addLayer(dataset.style(**styles["LAGOS"]), {}, "LAGOS")
 
-if "US NED Depressions" in datasets:
-    depressions = ee.FeatureCollection("users/giswqs/MRB/US_depressions")
-    Map.addLayer(
-        depressions.style(**styles["US NED Depressions"]), {}, "US NED Depressions"
-    )
+# if "US NED Depressions" in datasets:
+#     depressions = ee.FeatureCollection("users/giswqs/MRB/US_depressions")
+#     Map.addLayer(
+#         depressions.style(**styles["US NED Depressions"]), {}, "US NED Depressions"
+#     )
 
-if datasets:
-    legend_datasets = datasets[:]
-    # if "Global River Width" in legend_datasets:
-    #     legend_datasets.remove("Global River Width")
-    legend_dict = {}
-    for dataset in legend_datasets:
-        legend_dict[dataset] = styles[dataset]["fillColor"][:6]
+# if datasets:
+#     legend_datasets = datasets[:]
+#     # if "Global River Width" in legend_datasets:
+#     #     legend_datasets.remove("Global River Width")
+#     legend_dict = {}
+#     for dataset in legend_datasets:
+#         legend_dict[dataset] = styles[dataset]["fillColor"][:6]
 
-    if len(legend_datasets) > 0:
+#     if len(legend_datasets) > 0:
 
-        Map.add_legend(title="Surface Water", legend_dict=legend_dict)
+#         Map.add_legend(title="Surface Water", legend_dict=legend_dict)
 
 # if "JRC Global Surface Water" in datasets:
 #     jrc = ee.Image("JRC/GSW1_3/GlobalSurfaceWater")
@@ -347,34 +411,34 @@ if datasets:
 #     Map.addLayer(jrc, vis, "JRC Global Surface Water")
 #     Map.add_colorbar(vis, label="Surface water occurrence (%)")
 
-if "Global River Width" in datasets:
-    water_mask = ee.ImageCollection(
-        "projects/sat-io/open-datasets/GRWL/water_mask_v01_01"
-    ).median()
+# if "Global River Width" in datasets:
+#     water_mask = ee.ImageCollection(
+#         "projects/sat-io/open-datasets/GRWL/water_mask_v01_01"
+#     ).median()
 
-    grwl_summary = ee.FeatureCollection(
-        "projects/sat-io/open-datasets/GRWL/grwl_SummaryStats_v01_01"
-    )
-    grwl_water_vector = ee.FeatureCollection(
-        "projects/sat-io/open-datasets/GRWL/water_vector_v01_01"
-    )
+#     grwl_summary = ee.FeatureCollection(
+#         "projects/sat-io/open-datasets/GRWL/grwl_SummaryStats_v01_01"
+#     )
+#     grwl_water_vector = ee.FeatureCollection(
+#         "projects/sat-io/open-datasets/GRWL/water_vector_v01_01"
+#     )
 
-    if st.session_state["ROI"] is not None:
-        water_mask = water_mask.clipToCollection(st.session_state["ROI"])
-        grwl_summary = grwl_summary.filterBounds(st.session_state["ROI"])
+#     if st.session_state["ROI"] is not None:
+#         water_mask = water_mask.clipToCollection(st.session_state["ROI"])
+#         grwl_summary = grwl_summary.filterBounds(st.session_state["ROI"])
 
-    Map.addLayer(water_mask, {"palette": "blue"}, "GRWL RIver Mask")
-    Map.addLayer(
-        grwl_water_vector.style(**{"fillColor": "00000000", "color": "FF5500"}),
-        {},
-        "GRWL Centerline",
-        False,
-    )
-    Map.addLayer(
-        grwl_summary.style(**{"fillColor": "00000000", "color": "EE5500"}),
-        {},
-        "GRWL Centerline Simplified",
-    )
+#     Map.addLayer(water_mask, {"palette": "blue"}, "GRWL RIver Mask")
+#     Map.addLayer(
+#         grwl_water_vector.style(**{"fillColor": "00000000", "color": "FF5500"}),
+#         {},
+#         "GRWL Centerline",
+#         False,
+#     )
+#     Map.addLayer(
+#         grwl_summary.style(**{"fillColor": "00000000", "color": "EE5500"}),
+#         {},
+#         "GRWL Centerline Simplified",
+#     )
 
 show = False
 if select and country is not None:
@@ -393,35 +457,35 @@ else:
 Map.addLayer(st.session_state["ROI"].style(**style), {}, name, show)
 Map.centerObject(st.session_state["ROI"])
 
-with col2:
-    wbds = [
-        "NHD-HUC2",
-        "NHD-HUC4",
-        "NHD-HUC6",
-        "NHD-HUC8",
-        "NHD-HUC10",
-    ]
-    wbd = st.multiselect("Select watershed boundaries", wbds)
+# with col2:
+#     wbds = [
+#         "NHD-HUC2",
+#         "NHD-HUC4",
+#         "NHD-HUC6",
+#         "NHD-HUC8",
+#         "NHD-HUC10",
+#     ]
+#     wbd = st.multiselect("Select watershed boundaries", wbds)
 
-    if "NHD-HUC2" in wbd:
-        huc2 = ee.FeatureCollection("USGS/WBD/2017/HUC02")
-        Map.addLayer(huc2.style(**{"fillColor": "00000000"}), {}, "NHD-HUC2")
+#     if "NHD-HUC2" in wbd:
+#         huc2 = ee.FeatureCollection("USGS/WBD/2017/HUC02")
+#         Map.addLayer(huc2.style(**{"fillColor": "00000000"}), {}, "NHD-HUC2")
 
-    if "NHD-HUC4" in wbd:
-        huc4 = ee.FeatureCollection("USGS/WBD/2017/HUC04")
-        Map.addLayer(huc4.style(**{"fillColor": "00000000"}), {}, "NHD-HUC4")
+#     if "NHD-HUC4" in wbd:
+#         huc4 = ee.FeatureCollection("USGS/WBD/2017/HUC04")
+#         Map.addLayer(huc4.style(**{"fillColor": "00000000"}), {}, "NHD-HUC4")
 
-    if "NHD-HUC6" in wbd:
-        huc6 = ee.FeatureCollection("USGS/WBD/2017/HUC06")
-        Map.addLayer(huc6.style(**{"fillColor": "00000000"}), {}, "NHD-HUC6")
+#     if "NHD-HUC6" in wbd:
+#         huc6 = ee.FeatureCollection("USGS/WBD/2017/HUC06")
+#         Map.addLayer(huc6.style(**{"fillColor": "00000000"}), {}, "NHD-HUC6")
 
-    if "NHD-HUC8" in wbd:
-        huc8 = ee.FeatureCollection("USGS/WBD/2017/HUC08")
-        Map.addLayer(huc8.style(**{"fillColor": "00000000"}), {}, "NHD-HUC8")
+#     if "NHD-HUC8" in wbd:
+#         huc8 = ee.FeatureCollection("USGS/WBD/2017/HUC08")
+#         Map.addLayer(huc8.style(**{"fillColor": "00000000"}), {}, "NHD-HUC8")
 
-    if "NHD-HUC10" in wbd:
-        huc10 = ee.FeatureCollection("USGS/WBD/2017/HUC10")
-        Map.addLayer(huc10.style(**{"fillColor": "00000000"}), {}, "NHD-HUC10")
+#     if "NHD-HUC10" in wbd:
+#         huc10 = ee.FeatureCollection("USGS/WBD/2017/HUC10")
+#         Map.addLayer(huc10.style(**{"fillColor": "00000000"}), {}, "NHD-HUC10")
 
 with col1:
 
