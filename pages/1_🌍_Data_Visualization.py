@@ -28,7 +28,7 @@ st.sidebar.info(
 )
 
 
-st.title("Visualizing Global Surface Water")
+st.title("Visualizing Global Surface Water Datasets")
 
 
 @st.cache
@@ -74,7 +74,14 @@ basemaps = list(geemap.basemaps.keys())
 
 with col2:
 
-    with st.expander("Set map center and zoom level"):
+    with st.expander("Map configuration"):
+        basemap = st.selectbox(
+            "Select a basemap",
+            basemaps,
+            index=basemaps.index("HYBRID"),
+        )
+        Map.add_basemap(basemap)
+
         latitude = st.number_input("Map center latitude", -90.0, 90.0, 20.0, step=0.5)
         longitude = st.number_input(
             "Map center longitude", -180.0, 180.0, 0.0, step=0.5
@@ -103,13 +110,6 @@ with col2:
                 # Map.add_gdf(gdf, "ROI")
             else:
                 st.session_state["ROI"] = roi
-
-    basemap = st.selectbox(
-        "Select a basemap",
-        basemaps,
-        index=basemaps.index("HYBRID"),
-    )
-    Map.add_basemap(basemap)
 
     datasets = [
         "JRC Max Water Extent (1984-2020)",
