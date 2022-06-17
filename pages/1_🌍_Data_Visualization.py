@@ -242,6 +242,102 @@ with col2:
                     title="Dynamic World Land Cover", builtin_legend="Dynamic_World"
                 )
 
+    elif dataset == "ESA Global Land Cover 2020":
+        image = ee.ImageCollection("ESA/WorldCover/v100").first()
+
+        if st.session_state["ROI"] is not None:
+            image = image.clip(st.session_state["ROI"])
+
+        if water_only:
+            image = image.eq(80).selfMask()
+
+            params = params_input.text_area(
+                "Enter vis params as a dictionary",
+                "{'min': 1, 'max': 1, 'palette': ['0064c8']}",
+            )
+
+            try:
+                vis_params = eval(params)
+            except Exception as e:
+                st.error(e)
+                st.error("Invalid vis params")
+                vis_params = {}
+        else:
+            vis_params = {
+                "bands": ["Map"],
+            }
+
+        if split:
+            layer = geemap.ee_tile_layer(image, vis_params, dataset, True, opacity)
+            Map.split_map(layer, layer)
+        else:
+            Map.add_layer(image, vis_params, dataset, True, opacity)
+
+        if add_legend:
+
+            if water_only:
+                legend_dict = {"Water": vis_params["palette"][0]}
+                Map.add_legend(title="Legend", legend_dict=legend_dict)
+            else:
+                Map.add_legend(title="ESA Land Cover", builtin_legend="ESA_WorldCover")
+
+    elif dataset == "ESRI Global Land Cover 2020":
+        image = ee.ImageCollection(
+            "projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m"
+        ).mosaic()
+
+        if st.session_state["ROI"] is not None:
+            image = image.clip(st.session_state["ROI"])
+
+        if water_only:
+            image = image.eq(1).selfMask()
+
+            esri_vis = {"min": 1, "max": 1, "palette": ["#1A5BAB"]}
+
+        else:
+            esri_vis = {
+                "min": 1,
+                "max": 10,
+                "palette": [
+                    "#1A5BAB",
+                    "#358221",
+                    "#A7D282",
+                    "#87D19E",
+                    "#FFDB5C",
+                    "#EECFA8",
+                    "#ED022A",
+                    "#EDE9E4",
+                    "#F2FAFF",
+                    "#C8C8C8",
+                ],
+            }
+
+        params = params_input.text_area(
+            "Enter vis params as a dictionary",
+            str(esri_vis),
+        )
+
+        try:
+            vis_params = eval(params)
+        except Exception as e:
+            st.error(e)
+            st.error("Invalid vis params")
+            vis_params = {}
+
+        if split:
+            layer = geemap.ee_tile_layer(image, vis_params, dataset, True, opacity)
+            Map.split_map(layer, layer)
+        else:
+            Map.add_layer(image, vis_params, dataset, True, opacity)
+
+        if add_legend:
+
+            if water_only:
+                legend_dict = {"Water": vis_params["palette"][0]}
+                Map.add_legend(title="Legend", legend_dict=legend_dict)
+            else:
+                Map.add_legend(title="ESRI Land Cover", builtin_legend="ESRI_LandCover")
+
     # if basemap in google_basemaps:
     #     Map.add_basemap(basemap.replace("Google ", ""))
     # elif basemap in lc_basemaps:
