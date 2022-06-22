@@ -36,6 +36,7 @@ st.title("Analyzing Global Surface Water Datasets")
 default_vis = {
     "JRC Max Water Extent (1984-2020)": "{'min': 1, 'max': 1, 'palette': ['0000ff']}",
     "JRC Water Occurrence (1984-2020)": "{'min': 0, 'max': 100, 'palette': ['ffffff', 'ffbbbb', '0000ff']}",
+    "JRC Monthly Water History (1984-2020)": "{'min': 0, 'max': 2, 'palette': ['ffffff', 'fffcb8', '0905ff']}",
     "Dynamic World 2020": "{}",
     "ESA Global Land Cover 2020": '{"bands": ["Map"]}',
     "ESRI Global Land Cover 2020": "{'min': 1, 'max': 10, 'palette': ['1A5BAB', '358221', 'A7D282', '87D19E', 'FFDB5C', 'EECFA8', 'ED022A', 'EDE9E4', 'F2FAFF', 'C8C8C8']}",
@@ -48,6 +49,7 @@ default_vis = {
 water_vis = {
     "JRC Max Water Extent (1984-2020)": "{'min': 1, 'max': 1, 'palette': ['0000ff']}",
     "JRC Water Occurrence (1984-2020)": "{'min': 0, 'max': 100, 'palette': ['ffffff', 'ffbbbb', '0000ff']}",
+    "JRC Monthly Water History (1984-2020)": "{'min': 1, 'max': 1, 'palette': ['0000ff']}",
     "Dynamic World 2020": "{'min': 1, 'max': 1, 'palette': ['419BDF']}",
     "ESA Global Land Cover 2020": "{'min': 1, 'max': 1, 'palette': ['0064c8']}",
     "ESRI Global Land Cover 2020": '{"min": 1, "max": 1, "palette": ["1A5BAB"]}',
@@ -107,6 +109,19 @@ def get_layer(dataset, vis_params, water_only, region=None, opacity=1.0):
         return image
     elif dataset == "JRC Water Occurrence (1984-2020)":
         image = ee.Image("JRC/GSW1_3/GlobalSurfaceWater").select("occurrence")
+
+        if region is not None:
+            image = image.clip(region)
+
+        return image
+
+    elif dataset == "JRC Monthly Water History (1984-2020)":
+        image = (
+            ee.ImageCollection("JRC/GSW1_3/MonthlyHistory")
+            .map(lambda img: img.eq(2).selfMask())
+            .max()
+            .selfMask()
+        )
 
         if region is not None:
             image = image.clip(region)
@@ -206,7 +221,7 @@ with st.expander("How to use this app"):
     """
     st.markdown(markdown)
 
-col1, col2 = st.columns([4, 1])
+col1, col2 = st.columns([3.2, 1])
 
 Map = geemap.Map(Draw_export=True, locate_control=True, plugin_LatLngPopup=True)
 
@@ -258,6 +273,7 @@ with col2:
     options = [
         "JRC Max Water Extent (1984-2020)",
         "JRC Water Occurrence (1984-2020)",
+        "JRC Monthly Water History (1984-2020)",
         "Dynamic World 2020",
         "ESA Global Land Cover 2020",
         "ESRI Global Land Cover 2020",
@@ -266,6 +282,16 @@ with col2:
         "Global floodplains (GFPLAIN250m)",
         "HydroLAKES",
     ]
+
+    with st.expander("Set params for filtering data"):
+        years = st.slider("Select the year range", 1984, 2022, (1984, 2021))
+        months = st.slider("Select the month range", 1, 12, (6, 9))
+        reducer = st.selectbox(
+            "Select a reducer for aggregating data",
+            ["sum", "mean", "min", "max"],
+            index=1,
+        )
+        scale = st.slider("Select a scale for computing", 10, 10000, 1000)
 
     water_only = st.checkbox("Show water class only", True)
     # add_legend = st.checkbox("Add legend", True)
@@ -379,39 +405,75 @@ if submitted:
         # layer = get_layer(dataset, vis_params, water_only, st.session_state["ROI"])
         # Map.addLayer(layer, vis_params, dataset)
 
+        start_year = years[0]
+        end_year = years[1]
+        start_month = months[0]
+        end_month = months[1]
+        start_date = f"{start_year}-{str(start_month).zfill(2)}-01"
+        end_date = f"{end_year}-{str(end_month).zfill(2)}-01"
+
         if select or upload:
-            with col2:
 
-                region = st.session_state["ROI"]
-                empty = st.empty()
-                empty.text("Computing...")
-                df = geemap.image_area_by_group(
-                    layer,
-                    region=region,
-                    scale=1000,
-                    denominator=1e6,
-                    decimal_places=2,
-                    verbose=True,
-                )
-                df["group"] = df.index
-                df["cum_pct"] = df["percentage"].cumsum()
+            region = st.session_state["ROI"]
 
-                fig = px.line(
-                    df,
-                    y="area",
-                    x="group",
-                    orientation="h",
-                    labels={"group": "Occurrence (%)", "area": "Area (ha)"},
+            if dataset == "JRC Monthly Water History (1984-2020)":
+                images = (
+                    ee.ImageCollection("JRC/GSW1_3/MonthlyHistory")
+                    .filterDate(start_date, end_date)
+                    .filter(ee.Filter.calendarRange(start_month, end_month, "month"))
+                    .map(lambda img: img.eq(2).selfMask())
                 )
 
-            with col1:
-                st.header(dataset)
-                st.plotly_chart(fig)
-                # empty.bar_chart(df["area"])
-                st.dataframe(df)
-                leafmap.st_download_button("Download data", df)
+                def cal_area(img):
+                    pixel_area = img.multiply(ee.Image.pixelArea()).divide(1e6)
+                    img_area = pixel_area.reduceRegion(
+                        **{
+                            "geometry": region,
+                            "reducer": ee.Reducer.sum(),
+                            "scale": scale,
+                            "maxPixels": 1e12,
+                            "bestEffort": True,
+                        }
+                    )
+                    return img.set({"area": img_area})
 
-            with col2:
-                empty.text("")
+                areas = images.map(cal_area)
+                stats = areas.aggregate_array("area").getInfo()
+                with col2:
+                    st.write(stats)
+
+            # with col2:
+
+            #     region = st.session_state["ROI"]
+            #     empty = st.empty()
+            #     empty.text("Computing...")
+            #     df = geemap.image_area_by_group(
+            #         layer,
+            #         region=region,
+            #         scale=1000,
+            #         denominator=1e6,
+            #         decimal_places=2,
+            #         verbose=True,
+            #     )
+            #     df["group"] = df.index
+            #     df["cum_pct"] = df["percentage"].cumsum()
+
+            #     fig = px.line(
+            #         df,
+            #         y="area",
+            #         x="group",
+            #         orientation="h",
+            #         labels={"group": "Occurrence (%)", "area": "Area (ha)"},
+            #     )
+
+            # with col1:
+            #     st.header(dataset)
+            #     st.plotly_chart(fig)
+            #     # empty.bar_chart(df["area"])
+            #     st.dataframe(df)
+            #     leafmap.st_download_button("Download data", df)
+
+            # with col2:
+            #     empty.text("")
 
     # empty.text("")
