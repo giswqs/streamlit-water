@@ -248,7 +248,7 @@ with col2:
         )
         zoom = st.slider("Map zoom level", 1, 22, 2)
 
-    select = st.checkbox("Select a country")
+    select = st.checkbox("Select a country", True)
     if select:
         country = st.selectbox(
             "Select a country from dropdown list",
@@ -311,7 +311,11 @@ with col2:
 
     with st.form("compute"):
 
-        datasets = st.multiselect("Select datatsets to analyze", options)
+        datasets = st.multiselect(
+            "Select datatsets to analyze",
+            options,
+            default="JRC Monthly Water History (1984-2020)",
+        )
 
         submitted = st.form_submit_button("Submit")
 
@@ -356,7 +360,7 @@ style = {
 show = False
 if select and country is not None:
     name = country
-    style["color"] = "#000000"
+    style["color"] = "#FFFF00"
     style["width"] = 2
     show = True
 elif upload:

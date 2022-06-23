@@ -495,7 +495,7 @@ with col2:
             vis_params = {}
 
         if split:
-            layer = geemap.ee_tile_layer(vector, vis_params, {}, dataset, True, opacity)
+            layer = geemap.ee_tile_layer(vector, vis_params, dataset, True, opacity)
             Map.split_map(layer, layer)
         else:
             Map.add_layer(vector, vis_params, dataset, True, opacity)
