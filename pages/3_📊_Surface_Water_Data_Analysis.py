@@ -482,6 +482,25 @@ if submitted:
                     leafmap.st_download_button("Download data", df)
                     st.write(df2)
                     leafmap.st_download_button("Download data", df2)
+            else:
+                vis_params = eval(vis_options[dataset])
+                layer = get_layer(
+                    dataset, vis_params, water_only, st.session_state["ROI"]
+                )
+                Map.addLayer(layer, vis_params, dataset)
+
+                # if dataset == "JRC Max Water Extent (1984-2020)":
+                df = geemap.image_area_by_group(
+                    layer,
+                    region=region,
+                    scale=scale,
+                    denominator=1e4,
+                    decimal_places=2,
+                    verbose=True,
+                )
+                empty.text("")
+                st.write(dataset)
+                st.write(df)
 
                 # with col2:
                 #     st.write(stats)
