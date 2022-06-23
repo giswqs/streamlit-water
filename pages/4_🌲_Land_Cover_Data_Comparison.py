@@ -5,13 +5,17 @@ import geemap.foliumap as geemap
 
 st.set_page_config(layout="wide")
 
+markdown = """
+Web App URL: <https://waters.streamlitapp.com>
+
+GitHub Repository: <https://github.com/giswqs/streamlit-water>
+
+More Apps: <https://geospatial.streamlitapp.com>
+
+"""
+
 st.sidebar.title("About")
-st.sidebar.info(
-    """
-    Web App URL: <https://geospatial.streamlitapp.com>
-    GitHub repository: <https://github.com/giswqs/streamlit-geospatial>
-    """
-)
+st.sidebar.info(markdown)
 
 st.sidebar.title("Contact")
 st.sidebar.info(
@@ -20,6 +24,7 @@ st.sidebar.info(
     [GitHub](https://github.com/giswqs) | [Twitter](https://twitter.com/giswqs) | [YouTube](https://www.youtube.com/c/QiushengWu) | [LinkedIn](https://www.linkedin.com/in/qiushengwu)
     """
 )
+
 
 st.title("Comparing Global Land Cover Maps")
 
