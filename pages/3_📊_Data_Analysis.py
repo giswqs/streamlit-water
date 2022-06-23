@@ -4,6 +4,7 @@ import geemap.colormaps as cm
 import geopandas as gpd
 import streamlit as st
 import plotly.express as px
+import pandas as pd
 import leafmap
 
 st.set_page_config(layout="wide")
@@ -293,6 +294,13 @@ with col2:
         )
         scale = st.slider("Select a scale for computing", 10, 10000, 1000)
 
+        start_year = years[0]
+        end_year = years[1]
+        start_month = months[0]
+        end_month = months[1]
+        start_date = f"{start_year}-{str(start_month).zfill(2)}-01"
+        end_date = f"{end_year}-{str(end_month).zfill(2)}-01"
+
     water_only = st.checkbox("Show water class only", True)
     # add_legend = st.checkbox("Add legend", True)
 
@@ -371,8 +379,23 @@ with col1:
 
     if submitted:
         for dataset in datasets:
+
             vis_params = eval(vis_options[dataset])
-            layer = get_layer(dataset, vis_params, water_only, st.session_state["ROI"])
+            if dataset != "JRC Monthly Water History (1984-2020)":
+
+                layer = get_layer(
+                    dataset, vis_params, water_only, st.session_state["ROI"]
+                )
+            else:
+                layer = (
+                    ee.ImageCollection("JRC/GSW1_3/MonthlyHistory")
+                    .filterDate(start_date, end_date)
+                    .filter(ee.Filter.calendarRange(start_month, end_month, "month"))
+                    .map(lambda img: img.eq(2).selfMask())
+                    .max()
+                )
+                if st.session_state["ROI"] is not None:
+                    layer = layer.clip(st.session_state["ROI"])
             Map.addLayer(layer, vis_params, dataset)
 
     Map.to_streamlit(height=680)
@@ -405,16 +428,11 @@ if submitted:
         # layer = get_layer(dataset, vis_params, water_only, st.session_state["ROI"])
         # Map.addLayer(layer, vis_params, dataset)
 
-        start_year = years[0]
-        end_year = years[1]
-        start_month = months[0]
-        end_month = months[1]
-        start_date = f"{start_year}-{str(start_month).zfill(2)}-01"
-        end_date = f"{end_year}-{str(end_month).zfill(2)}-01"
-
-        if select or upload:
-
+        # if select or upload:
+        with col2:
             region = st.session_state["ROI"]
+            empty = st.empty()
+            empty.text("Computing...")
 
             if dataset == "JRC Monthly Water History (1984-2020)":
                 images = (
@@ -425,7 +443,7 @@ if submitted:
                 )
 
                 def cal_area(img):
-                    pixel_area = img.multiply(ee.Image.pixelArea()).divide(1e6)
+                    pixel_area = img.multiply(ee.Image.pixelArea()).divide(1e4)
                     img_area = pixel_area.reduceRegion(
                         **{
                             "geometry": region,
@@ -439,8 +457,30 @@ if submitted:
 
                 areas = images.map(cal_area)
                 stats = areas.aggregate_array("area").getInfo()
-                with col2:
-                    st.write(stats)
+                values = [item["water"] for item in stats]
+                labels = areas.aggregate_array("system:index").getInfo()
+                dates = [d[:4] for d in labels]
+                data_dict = {"Date": labels, "Year": dates, "Area (ha)": values}
+                df = pd.DataFrame(data_dict)
+                result = df.groupby("Year").agg(reducer)
+                df2 = pd.DataFrame(
+                    {"Year": result.index, "Area (ha)": result["Area (ha)"]}
+                )
+                df2 = df2.reset_index(drop=True)
+
+                # fig = px.scatter(result, x="Year", y="Area (ha)", trendline="ols")
+                fig = px.bar(df2, x="Year", y="Area (ha)")
+                # with col2:
+                empty.plotly_chart(fig)
+
+                with st.expander("Statistics"):
+                    st.write(df)
+                    leafmap.st_download_button("Download data", df)
+                    st.write(df2)
+                    leafmap.st_download_button("Download data", df2)
+
+                # with col2:
+                #     st.write(stats)
 
             # with col2:
 
