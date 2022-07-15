@@ -227,7 +227,7 @@ col1, col2 = st.columns([3.2, 1])
 Map = geemap.Map(Draw_export=True, locate_control=True, plugin_LatLngPopup=True)
 
 roi = ee.FeatureCollection("users/giswqs/public/countries")
-countries = roi.aggregate_array("name").getInfo()
+countries = roi.aggregate_array("NAME").getInfo()
 countries.sort()
 basemaps = list(geemap.basemaps.keys())
 
@@ -255,7 +255,7 @@ with col2:
             countries,
             index=countries.index("United States of America"),
         )
-        st.session_state["ROI"] = roi.filter(ee.Filter.eq("name", country))
+        st.session_state["ROI"] = roi.filter(ee.Filter.eq("NAME", country))
     else:
 
         with st.expander("Click here to upload an ROI", False):
